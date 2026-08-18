@@ -140,11 +140,10 @@
 </div>
 
 <script>
-  // ===== 設定：Google 試算表 ID 與各品牌分頁的 gid =====
+  // ===== 設定：Google 試算表 ID 與各品牌分頁的 gid（Android／iPhone 現在合併在同一份試算表）=====
   const ANDROID_SHEET_ID = "1IDOVG-py6Z02CZUpdnq-H-pvPRJCoHlu8rQkkKwERRE";
-  const IPHONE_SHEET_ID = "1hcCL4CWc3j_jgmiYVOHvAaDSwAZ88mw44qo1mJ0KKUo";
   const BRANDS_CONFIG = {
-    "iPhone": { kind: "iphone", sheetId: IPHONE_SHEET_ID, gid: "0" },
+    "iPhone": { kind: "iphone", sheetId: ANDROID_SHEET_ID, gid: "533321848" },
     "三星": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "545222408" },
     "OPPO": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "302173125" },
     "VIVO": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "1747588530" },
