@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>安卓維修報價查詢</title>
+<title>手機維修報價查詢</title>
 <style>
   :root {
     --bg: #eef1ef;
@@ -81,6 +81,7 @@
   .model-list .badges { display: flex; gap: 4px; flex: none; }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
   .dot.on { background: var(--accent); }
+  .part-count { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
   .empty-state, .loading-state, .error-state { padding: 34px 16px; text-align: center; color: var(--text-muted); font-size: 14px; }
   .error-state { color: #b8452e; }
   .result { margin-top: 22px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; display: none; }
@@ -105,8 +106,8 @@
 <div class="wrap">
   <header class="page-head">
     <span class="eyebrow">維修零件報價查詢</span>
-    <h1>安卓機型維修報價</h1>
-    <p>三星／OPPO／VIVO／小米／紅米，2020 年後機型。資料即時讀取自 Google 試算表。</p>
+    <h1>手機維修報價查詢</h1>
+    <p>iPhone／三星／OPPO／VIVO／小米／紅米。資料即時讀取自 Google 試算表。</p>
   </header>
 
   <div class="status-bar">
@@ -134,21 +135,23 @@
   </div>
 
   <footer class="page-foot">
-    資料每次開啟本頁面時，直接從 Google 試算表即時讀取。加價規則：電池／聽筒／喇叭 +1000；總成依成本級距加價（1000 以內 +1500、1000–2000 +2000、2000–3000 +2500、3000–4000 +3000、4000 以上 +3500）；尾插排線 +1500；最終再無條件進位到百位。
+    資料每次開啟本頁面時，直接從 Google 試算表即時讀取。Android 報價依零件批發參考價與店內加價規則自動換算；iPhone 報價為報價表既有數值。皆僅供參考，實際報價請依當下行情與機況調整。
   </footer>
 </div>
 
 <script>
   // ===== 設定：Google 試算表 ID 與各品牌分頁的 gid =====
-  const SHEET_ID = "1IDOVG-py6Z02CZUpdnq-H-pvPRJCoHlu8rQkkKwERRE";
-  const BRAND_GIDS = {
-    "三星": "545222408",
-    "OPPO": "302173125",
-    "VIVO": "1747588530",
-    "小米": "1927691296",
-    "紅米": "1364731295",
+  const ANDROID_SHEET_ID = "1IDOVG-py6Z02CZUpdnq-H-pvPRJCoHlu8rQkkKwERRE";
+  const IPHONE_SHEET_ID = "1hcCL4CWc3j_jgmiYVOHvAaDSwAZ88mw44qo1mJ0KKUo";
+  const BRANDS_CONFIG = {
+    "三星": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "545222408" },
+    "OPPO": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "302173125" },
+    "VIVO": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "1747588530" },
+    "小米": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "1927691296" },
+    "紅米": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "1364731295" },
+    "iPhone": { kind: "iphone", sheetId: IPHONE_SHEET_ID, gid: "0" },
   };
-  const BRANDS = Object.keys(BRAND_GIDS);
+  const BRANDS = Object.keys(BRANDS_CONFIG);
   const PART_LABELS = { screen: "總成（螢幕）", battery: "電池", tailplug: "尾插排線" };
 
   // combined-sheet 欄位配置（1-indexed → 0-indexed）
@@ -262,20 +265,45 @@
       });
   }
 
+  // ---------- iPhone sheet: 每種零件各自一欄，欄名即零件名稱，已是最終報價 ----------
+  function buildIphoneList(rows) {
+    if (!rows.length) return [];
+    const header = rows[0];
+    const list = [];
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const model = (row[0] || "").trim();
+      if (!model) continue;
+      const parts = [];
+      for (let c = 1; c < header.length; c++) {
+        const label = (header[c] || "").trim();
+        if (!label) continue;
+        const raw = (row[c] || "").trim();
+        if (!raw || raw.toUpperCase() === "X") continue;
+        const quote = parseNumber(raw);
+        if (quote == null) continue;
+        parts.push({ label, quote });
+      }
+      list.push({ model, parts });
+    }
+    return list;
+  }
+
   // ---------- Fetching ----------
-  function csvUrl(gid) {
-    return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}&cachebust=${Date.now()}`;
+  function csvUrl(sheetId, gid) {
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&cachebust=${Date.now()}`;
   }
 
   async function fetchBrand(brand) {
-    const res = await fetch(csvUrl(BRAND_GIDS[brand]), { cache: "no-store" });
+    const cfg = BRANDS_CONFIG[brand];
+    const res = await fetch(csvUrl(cfg.sheetId, cfg.gid), { cache: "no-store" });
     if (!res.ok) throw new Error(`${brand} 讀取失敗（HTTP ${res.status}）`);
     const text = await res.text();
     if (/^<!DOCTYPE html/i.test(text.trim())) {
       throw new Error("試算表尚未開放公開檢視，或連結錯誤");
     }
     const rows = parseCSV(text);
-    return buildBrandList(rows);
+    return cfg.kind === "iphone" ? buildIphoneList(rows) : buildBrandList(rows);
   }
 
   async function loadAll() {
@@ -345,6 +373,7 @@
       return;
     }
 
+    const kind = BRANDS_CONFIG[activeBrand].kind;
     filtered.slice(0, 200).forEach((item) => {
       const li = document.createElement("li");
       const btn = document.createElement("button");
@@ -353,11 +382,18 @@
       nameSpan.textContent = item.model;
       const badges = document.createElement("span");
       badges.className = "badges";
-      ["screen", "battery", "tailplug"].forEach((k) => {
-        const d = document.createElement("span");
-        d.className = "dot" + (item[k] ? " on" : "");
-        badges.appendChild(d);
-      });
+      if (kind === "android") {
+        ["screen", "battery", "tailplug"].forEach((k) => {
+          const d = document.createElement("span");
+          d.className = "dot" + (item[k] ? " on" : "");
+          badges.appendChild(d);
+        });
+      } else {
+        const countSpan = document.createElement("span");
+        countSpan.className = "part-count";
+        countSpan.textContent = item.parts.length + " 項";
+        badges.appendChild(countSpan);
+      }
       btn.appendChild(nameSpan);
       btn.appendChild(badges);
       btn.addEventListener("click", () => selectModel(item));
@@ -366,15 +402,15 @@
     });
   }
 
-  function partRow(key, data) {
+  function partRow(label, data) {
     const row = document.createElement("div");
     row.className = "part-row" + (data ? "" : " missing");
     const info = document.createElement("div");
     info.className = "info";
-    const label = document.createElement("div");
-    label.className = "label";
-    label.textContent = PART_LABELS[key];
-    info.appendChild(label);
+    const labelEl = document.createElement("div");
+    labelEl.className = "label";
+    labelEl.textContent = label;
+    info.appendChild(labelEl);
     if (!data) {
       const spec = document.createElement("div");
       spec.className = "spec";
@@ -393,7 +429,12 @@
     resultName.textContent = item.model;
     resultBrand.textContent = activeBrand;
     resultParts.innerHTML = "";
-    ["screen", "battery", "tailplug"].forEach((k) => resultParts.appendChild(partRow(k, item[k])));
+    const kind = BRANDS_CONFIG[activeBrand].kind;
+    if (kind === "android") {
+      ["screen", "battery", "tailplug"].forEach((k) => resultParts.appendChild(partRow(PART_LABELS[k], item[k])));
+    } else {
+      item.parts.forEach((p) => resultParts.appendChild(partRow(p.label, p)));
+    }
     resultEl.classList.add("show");
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
