@@ -241,32 +241,33 @@
   }
 
   // ===== 零件配對警示（Apple 原廠/副廠零件配對機制，依機型代數而異）=====
+  // 回傳一個備註字串陣列（每則各自顯示一行），沒有備註則回傳 null。
   function iphonePartNote(label, model) {
     const info = iphoneGenInfo(model);
     if (label === "螢幕（同規格）") {
-      if (info.gen != null && info.gen >= 11) return "此機型維修後設定內會顯示「未知」或「已使用」提示";
+      if (info.gen != null && info.gen >= 11) return ["此機型維修後設定內會顯示「未知」或「已使用」提示"];
       return null;
     }
     if (label === "螢幕（副廠）") {
-      if (info.gen != null && info.gen >= 11) return "此機型維修後設定內會顯示「未知」提示";
+      if (info.gen != null && info.gen >= 11) return ["此機型維修後設定內會顯示「未知」提示"];
       return null;
     }
     if (label === "螢幕玻璃") {
-      return "只保觸控功能";
+      return ["只保觸控功能"];
     }
     if (label === "原廠電池") {
-      return "維修後顯示為原廠零件";
+      return ["維修後顯示為原廠零件", "須將「尋找我的iPhone」關閉"];
     }
     if (label === "副廠電池") {
       const warnSet = ["XR", "XS", "XSM", "SE2", "SE3"];
       if (info.gen === 11 || (info.special && warnSet.includes(info.special))) {
-        return "此機型維修後設定內會顯示「未知」提示";
+        return ["此機型維修後設定內會顯示「未知」提示"];
       }
-      if (info.gen != null && info.gen >= 12) return "此機型維修後設定內會顯示「已使用」提示";
+      if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「已使用」提示"];
       return null;
     }
     if (label === "後鏡頭") {
-      if (info.gen != null && info.gen >= 12) return "此機型維修後設定內會顯示「未知」或「已使用」提示";
+      if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「未知」或「已使用」提示"];
       return null;
     }
     return null;
@@ -551,12 +552,13 @@
         tags.appendChild(timeEl);
       }
       info.appendChild(tags);
-      if (noteText) {
+      const notes = noteText ? (Array.isArray(noteText) ? noteText : [noteText]) : [];
+      notes.forEach((n) => {
         const noteEl = document.createElement("div");
         noteEl.className = "part-note";
-        noteEl.textContent = "＊" + noteText;
+        noteEl.textContent = "＊" + n;
         info.appendChild(noteEl);
-      }
+      });
     }
     row.appendChild(info);
     const quote = document.createElement("div");
