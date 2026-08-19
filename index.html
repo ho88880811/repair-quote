@@ -204,6 +204,12 @@
     tailplug: "約30-60分鐘",
   };
 
+  // ===== iPhone 項目顯示名稱覆寫（僅影響畫面上顯示的標題文字，時間/保固/備註判斷仍用原始欄名）=====
+  const IPHONE_LABEL_OVERRIDE = {
+    "原廠電池": "原廠電池(需預約付訂金1000料到通知維修)",
+    "螢幕玻璃": "螢幕玻璃(需預約，施做有風險，沒成功需更換螢幕)",
+  };
+
   // ===== 預估維修時間：iPhone（依報價表欄名對應）=====
   const IPHONE_REPAIR_TIME = {
     "螢幕（同規格）": "約30-90分鐘",
@@ -523,14 +529,14 @@
     });
   }
 
-  function partRow(label, data, timeText, noteText) {
+  function partRow(label, data, timeText, noteText, displayLabel) {
     const row = document.createElement("div");
     row.className = "part-row" + (data ? "" : " missing");
     const info = document.createElement("div");
     info.className = "info";
     const labelEl = document.createElement("div");
     labelEl.className = "label";
-    labelEl.textContent = label;
+    labelEl.textContent = displayLabel || label;
     info.appendChild(labelEl);
     if (!data) {
       const spec = document.createElement("div");
@@ -577,7 +583,7 @@
       ["screen", "battery", "tailplug"].forEach((k) => resultParts.appendChild(partRow(PART_LABELS[k], item[k], ANDROID_REPAIR_TIME[k])));
     } else {
       item.parts.forEach((p) => resultParts.appendChild(
-        partRow(p.label, p, IPHONE_REPAIR_TIME[p.label], iphonePartNote(p.label, item.model))
+        partRow(p.label, p, IPHONE_REPAIR_TIME[p.label], iphonePartNote(p.label, item.model), IPHONE_LABEL_OVERRIDE[p.label])
       ));
     }
     detailPlaceholderEl.classList.remove("show");
