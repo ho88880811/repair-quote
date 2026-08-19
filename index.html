@@ -221,11 +221,11 @@
   function iphonePartNote(label, model) {
     const info = iphoneGenInfo(model);
     if (label === "螢幕（原廠同規格）") {
-      if (info.gen != null && info.gen >= 11) return "此機型維修後可能顯示「不明零件」或「已使用過的零件」提示";
+      if (info.gen != null && info.gen >= 11) return "此機型維修後設定內會顯示「未知」或「已使用」提示";
       return null;
     }
     if (label === "螢幕（副廠）") {
-      if (info.gen != null && info.gen >= 11) return "此機型維修後可能顯示「不明零件」提示";
+      if (info.gen != null && info.gen >= 11) return "此機型維修後設定內會顯示「未知」提示";
       return null;
     }
     if (label === "原廠電池") {
@@ -234,13 +234,13 @@
     if (label === "副廠電池") {
       const warnSet = ["XR", "XS", "XSM", "SE2", "SE3"];
       if (info.gen === 11 || (info.special && warnSet.includes(info.special))) {
-        return "此機型維修後可能顯示「不明零件」提示";
+        return "此機型維修後設定內會顯示「未知」提示";
       }
-      if (info.gen != null && info.gen >= 12) return "此機型維修後可能顯示「已使用過的零件」提示";
+      if (info.gen != null && info.gen >= 12) return "此機型維修後設定內會顯示「已使用」提示";
       return null;
     }
     if (label === "後鏡頭") {
-      if (info.gen != null && info.gen >= 12) return "此機型維修後可能顯示「不明零件」或「已使用過的零件」提示";
+      if (info.gen != null && info.gen >= 12) return "此機型維修後設定內會顯示「未知」或「已使用」提示";
       return null;
     }
     return null;
