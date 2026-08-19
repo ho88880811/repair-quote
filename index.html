@@ -298,6 +298,7 @@
   };
 
   let DATA = {};              // { brand: [ {model, screen?, battery?, tailplug?}, ... ] }
+  let LOAD_ERRORS = {};       // { brand: "錯誤訊息" } - 只記錄讀取失敗的品牌，不影響其他品牌
   let activeBrand = BRANDS[0];
   let query = "";
   let loaded = false;
@@ -446,24 +447,35 @@
     searchInput.disabled = true;
     modelListEl.innerHTML = '<li><div class="loading-state">正在從 Google 試算表載入資料…</div></li>';
 
-    try {
-      const results = await Promise.all(BRANDS.map((b) => fetchBrand(b)));
-      BRANDS.forEach((b, i) => { DATA[b] = results[i]; });
-      loaded = true;
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
-      syncStatusEl.textContent = `已同步・更新於 ${hh}:${mm}:${ss}`;
-      searchInput.disabled = false;
-      renderTabs();
-      renderList();
-    } catch (err) {
-      syncStatusEl.textContent = "讀取失敗";
-      modelListEl.innerHTML = `<li><div class="error-state">${(err && err.message) || "無法讀取試算表資料"}<br>請確認試算表已設定「知道連結的人都能檢視」。</div></li>`;
-    } finally {
-      refreshBtn.disabled = false;
-    }
+    // 用 allSettled 而不是 all：某一個品牌分頁讀取失敗（gid 錯誤、權限被改等）
+    // 不會拖累其他品牌，成功的品牌照常顯示，只有失敗的那個品牌會標示錯誤。
+    const results = await Promise.allSettled(BRANDS.map((b) => fetchBrand(b)));
+    LOAD_ERRORS = {};
+    let failCount = 0;
+    BRANDS.forEach((b, i) => {
+      const r = results[i];
+      if (r.status === "fulfilled") {
+        DATA[b] = r.value;
+      } else {
+        DATA[b] = DATA[b] || [];
+        LOAD_ERRORS[b] = (r.reason && r.reason.message) || "讀取失敗";
+        failCount++;
+      }
+    });
+    loaded = true;
+    searchInput.disabled = false;
+
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    syncStatusEl.textContent = failCount > 0
+      ? `已同步・更新於 ${hh}:${mm}:${ss}（${failCount} 個品牌讀取失敗）`
+      : `已同步・更新於 ${hh}:${mm}:${ss}`;
+
+    renderTabs();
+    renderList();
+    refreshBtn.disabled = false;
   }
 
   refreshBtn.addEventListener("click", loadAll);
@@ -497,8 +509,18 @@
     const q = query.trim().toLowerCase();
     const filtered = q ? list.filter((m) => m.model.toLowerCase().includes(q)) : list;
 
-    modelCountEl.textContent = activeBrand + " 共 " + list.length + " 個型號" + (q ? "，符合 " + filtered.length + " 筆" : "");
     modelListEl.innerHTML = "";
+
+    if (LOAD_ERRORS[activeBrand]) {
+      modelCountEl.textContent = activeBrand + " 讀取失敗";
+      const err = document.createElement("div");
+      err.className = "error-state";
+      err.textContent = LOAD_ERRORS[activeBrand] + "，其他品牌不受影響。請按「重新整理資料」再試一次。";
+      modelListEl.appendChild(err);
+      return;
+    }
+
+    modelCountEl.textContent = activeBrand + " 共 " + list.length + " 個型號" + (q ? "，符合 " + filtered.length + " 筆" : "");
 
     if (filtered.length === 0) {
       const empty = document.createElement("div");
