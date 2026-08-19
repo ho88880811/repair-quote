@@ -97,9 +97,14 @@
   .part-row .quote { flex: none; font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1.3; white-space: nowrap; }
   .part-row.missing { opacity: .45; }
   .part-row.missing .quote { font-size: 14px; color: var(--text-muted); font-weight: 600; }
-  .warranty { display: inline-block; margin-top: 2px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; width: fit-content; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+  .warranty, .repair-time { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; width: fit-content; }
   .warranty.covered { color: var(--accent); background: var(--accent-soft); }
   .warranty.none { color: #b8452e; background: rgba(184, 69, 46, 0.1); }
+  .repair-time { color: var(--text-muted); background: var(--surface-alt); }
+  .part-note { font-size: 11.5px; color: #a3690f; margin-top: 3px; line-height: 1.4; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .part-note { color: #e0ac46; } }
+  :root[data-theme="dark"] .part-note { color: #e0ac46; }
   .result-foot { padding: 12px 20px 16px; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; }
   footer.page-foot { margin-top: 26px; font-size: 11.5px; color: var(--text-muted); line-height: 1.7; border-top: 1px solid var(--border); padding-top: 14px; }
   @media (max-width: 480px) { .wrap { padding: 20px 14px 48px; } header.page-head h1 { font-size: 20px; } }
@@ -168,6 +173,77 @@
     return isCosmeticPart(label)
       ? { text: "不含保固", cls: "none" }
       : { text: `保固${WARRANTY_DAYS}天`, cls: "covered" };
+  }
+
+  // ===== 預估維修時間：安卓（三種零件）=====
+  const ANDROID_REPAIR_TIME = {
+    screen: "約30-90分鐘",
+    battery: "約30-60分鐘",
+    tailplug: "約30-60分鐘",
+  };
+
+  // ===== 預估維修時間：iPhone（依報價表欄名對應）=====
+  const IPHONE_REPAIR_TIME = {
+    "螢幕（原廠同規格）": "約30-90分鐘",
+    "螢幕（副廠）": "約30-90分鐘",
+    "原廠電池": "約60-120分鐘",
+    "副廠電池": "約30-90分鐘",
+    "後鏡頭": "約30-60分鐘",
+    "前鏡頭": "約30-60分鐘",
+    "尾插": "約60-120分鐘",
+    "背玻璃": "約60-90分鐘",
+    "後殼總成": "約60-120分鐘",
+    "震動器": "約30分鐘",
+    "喇叭": "約30分鐘",
+    "聽筒": "約30分鐘",
+    "臉部辨識": "時間請洽詢",
+    "開機排線": "約60-90分鐘",
+    "音量排線+無線充電": "約60-90分鐘",
+    "鏡頭玻璃（單顆）": "約30-60分鐘",
+  };
+
+  // ===== iPhone 機型代數判斷（用於零件配對警示）=====
+  // 從機型字串抓出數字世代（7,8,11,12...）或特殊型號（X/XR/XS/XSM/SE2/SE3）
+  function iphoneGenInfo(model) {
+    const m = model.trim();
+    if (/SE\s*2/i.test(m)) return { special: "SE2" };
+    if (/SE\s*3/i.test(m)) return { special: "SE3" };
+    if (/\bXR\b/i.test(m)) return { special: "XR" };
+    if (/Xs\s*Max/i.test(m)) return { special: "XSM" };
+    if (/Xs\b/i.test(m)) return { special: "XS" };
+    const numMatch = m.match(/iphone\s*(\d+)/i);
+    if (numMatch) return { gen: parseInt(numMatch[1], 10) };
+    if (/iphone\s*x\b/i.test(m)) return { special: "X" };
+    return {};
+  }
+
+  // ===== 零件配對警示（Apple 原廠/副廠零件配對機制，依機型代數而異）=====
+  function iphonePartNote(label, model) {
+    const info = iphoneGenInfo(model);
+    if (label === "螢幕（原廠同規格）") {
+      if (info.gen != null && info.gen >= 11) return "此機型維修後可能顯示「不明零件」或「已使用過的零件」提示";
+      return null;
+    }
+    if (label === "螢幕（副廠）") {
+      if (info.gen != null && info.gen >= 11) return "此機型維修後可能顯示「不明零件」提示";
+      return null;
+    }
+    if (label === "原廠電池") {
+      return "維修後顯示為原廠零件";
+    }
+    if (label === "副廠電池") {
+      const warnSet = ["XR", "XS", "XSM", "SE2", "SE3"];
+      if (info.gen === 11 || (info.special && warnSet.includes(info.special))) {
+        return "此機型維修後可能顯示「不明零件」提示";
+      }
+      if (info.gen != null && info.gen >= 12) return "此機型維修後可能顯示「已使用過的零件」提示";
+      return null;
+    }
+    if (label === "後鏡頭") {
+      if (info.gen != null && info.gen >= 12) return "此機型維修後可能顯示「不明零件」或「已使用過的零件」提示";
+      return null;
+    }
+    return null;
   }
 
   // combined-sheet 欄位配置（1-indexed → 0-indexed）
@@ -418,7 +494,7 @@
     });
   }
 
-  function partRow(label, data) {
+  function partRow(label, data, timeText, noteText) {
     const row = document.createElement("div");
     row.className = "part-row" + (data ? "" : " missing");
     const info = document.createElement("div");
@@ -433,11 +509,26 @@
       spec.textContent = "尚無資料";
       info.appendChild(spec);
     } else {
+      const tags = document.createElement("div");
+      tags.className = "tags";
       const w = warrantyLabel(label);
       const warrantyEl = document.createElement("span");
       warrantyEl.className = "warranty " + w.cls;
       warrantyEl.textContent = w.text;
-      info.appendChild(warrantyEl);
+      tags.appendChild(warrantyEl);
+      if (timeText) {
+        const timeEl = document.createElement("span");
+        timeEl.className = "repair-time";
+        timeEl.textContent = timeText;
+        tags.appendChild(timeEl);
+      }
+      info.appendChild(tags);
+      if (noteText) {
+        const noteEl = document.createElement("div");
+        noteEl.className = "part-note";
+        noteEl.textContent = "＊" + noteText;
+        info.appendChild(noteEl);
+      }
     }
     row.appendChild(info);
     const quote = document.createElement("div");
@@ -453,9 +544,11 @@
     resultParts.innerHTML = "";
     const kind = BRANDS_CONFIG[activeBrand].kind;
     if (kind === "android") {
-      ["screen", "battery", "tailplug"].forEach((k) => resultParts.appendChild(partRow(PART_LABELS[k], item[k])));
+      ["screen", "battery", "tailplug"].forEach((k) => resultParts.appendChild(partRow(PART_LABELS[k], item[k], ANDROID_REPAIR_TIME[k])));
     } else {
-      item.parts.forEach((p) => resultParts.appendChild(partRow(p.label, p)));
+      item.parts.forEach((p) => resultParts.appendChild(
+        partRow(p.label, p, IPHONE_REPAIR_TIME[p.label], iphonePartNote(p.label, item.model))
+      ));
     }
     resultEl.classList.add("show");
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
