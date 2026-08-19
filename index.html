@@ -187,13 +187,23 @@
   // 少數項目保固天數不同於預設值（例如螢幕玻璃只保固30天），列在 WARRANTY_OVERRIDE_DAYS。
   const WARRANTY_DAYS = 90;
   const NO_WARRANTY_KEYWORDS = ["背玻璃", "後殼", "鏡頭玻璃"];
+  // key 用「基本項目名稱」比對（用 startsWith），這樣之後直接在 Google Sheet
+  // 欄位名稱後面加註記（例如「螢幕玻璃(需預約...)」）也不會對不上。
   const WARRANTY_OVERRIDE_DAYS = { "螢幕玻璃": 30 };
   function isCosmeticPart(label) {
     return NO_WARRANTY_KEYWORDS.some((kw) => label.includes(kw));
   }
+  // 依「開頭是否符合基本項目名稱」找對應值，不需要跟欄位名稱完全一致。
+  function lookupByPrefix(map, label) {
+    for (const key in map) {
+      if (label.startsWith(key)) return map[key];
+    }
+    return undefined;
+  }
   function warrantyLabel(label) {
     if (isCosmeticPart(label)) return { text: "不含保固", cls: "none" };
-    const days = WARRANTY_OVERRIDE_DAYS[label] != null ? WARRANTY_OVERRIDE_DAYS[label] : WARRANTY_DAYS;
+    const override = lookupByPrefix(WARRANTY_OVERRIDE_DAYS, label);
+    const days = override != null ? override : WARRANTY_DAYS;
     return { text: `保固${days}天`, cls: "covered" };
   }
 
@@ -205,12 +215,10 @@
   };
 
   // ===== iPhone 項目顯示名稱覆寫（僅影響畫面上顯示的標題文字，時間/保固/備註判斷仍用原始欄名）=====
-  const IPHONE_LABEL_OVERRIDE = {
-    "原廠電池": "原廠電池(需預約付訂金1000料到通知維修)",
-    "螢幕玻璃": "螢幕玻璃(需預約，施做有風險，沒成功需更換螢幕)",
-  };
+  // 目前欄位名稱已直接在 Google Sheet 裡加上備註，故此處不需要再覆寫顯示名稱。
+  const IPHONE_LABEL_OVERRIDE = {};
 
-  // ===== 預估維修時間：iPhone（依報價表欄名對應）=====
+  // ===== 預估維修時間：iPhone（key 用基本項目名稱，比對方式見 lookupByPrefix）=====
   const IPHONE_REPAIR_TIME = {
     "螢幕（同規格）": "約30-90分鐘",
     "螢幕（副廠）": "約30-90分鐘",
@@ -250,21 +258,21 @@
   // 回傳一個備註字串陣列（每則各自顯示一行），沒有備註則回傳 null。
   function iphonePartNote(label, model) {
     const info = iphoneGenInfo(model);
-    if (label === "螢幕（同規格）") {
+    if (label.startsWith("螢幕（同規格）")) {
       if (info.gen != null && info.gen >= 11) return ["此機型維修後設定內會顯示「未知」或「已使用」提示"];
       return null;
     }
-    if (label === "螢幕（副廠）") {
+    if (label.startsWith("螢幕（副廠）")) {
       if (info.gen != null && info.gen >= 11) return ["此機型維修後設定內會顯示「未知」提示"];
       return null;
     }
-    if (label === "螢幕玻璃") {
+    if (label.startsWith("螢幕玻璃")) {
       return ["只保觸控功能"];
     }
-    if (label === "原廠電池") {
+    if (label.startsWith("原廠電池")) {
       return ["維修後顯示為原廠零件", "須將「尋找我的iPhone」關閉"];
     }
-    if (label === "副廠電池") {
+    if (label.startsWith("副廠電池")) {
       const warnSet = ["XR", "XS", "XSM", "SE2", "SE3"];
       if (info.gen === 11 || (info.special && warnSet.includes(info.special))) {
         return ["此機型維修後設定內會顯示「未知」提示"];
@@ -272,7 +280,7 @@
       if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「已使用」提示"];
       return null;
     }
-    if (label === "後鏡頭") {
+    if (label.startsWith("後鏡頭")) {
       if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「未知」或「已使用」提示"];
       return null;
     }
@@ -583,7 +591,7 @@
       ["screen", "battery", "tailplug"].forEach((k) => resultParts.appendChild(partRow(PART_LABELS[k], item[k], ANDROID_REPAIR_TIME[k])));
     } else {
       item.parts.forEach((p) => resultParts.appendChild(
-        partRow(p.label, p, IPHONE_REPAIR_TIME[p.label], iphonePartNote(p.label, item.model), IPHONE_LABEL_OVERRIDE[p.label])
+        partRow(p.label, p, lookupByPrefix(IPHONE_REPAIR_TIME, p.label), iphonePartNote(p.label, item.model), IPHONE_LABEL_OVERRIDE[p.label])
       ));
     }
     detailPlaceholderEl.classList.remove("show");
