@@ -259,7 +259,7 @@
   function iphonePartNote(label, model) {
     const info = iphoneGenInfo(model);
     if (label.startsWith("螢幕（同規格）")) {
-      if (info.gen != null && info.gen >= 11) return ["此機型維修後設定內會顯示「未知」或「已使用」提示"];
+      if (info.gen != null && info.gen >= 11) return ["此機型維修後設定內會顯示「未知」或「二手」提示"];
       return null;
     }
     if (label.startsWith("螢幕（副廠）")) {
@@ -277,11 +277,11 @@
       if (info.gen === 11 || (info.special && warnSet.includes(info.special))) {
         return ["此機型維修後設定內會顯示「未知」提示"];
       }
-      if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「已使用」提示"];
+      if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「二手」提示"];
       return null;
     }
     if (label.startsWith("後鏡頭")) {
-      if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「未知」或「已使用」提示"];
+      if (info.gen != null && info.gen >= 12) return ["此機型維修後設定內會顯示「未知」或「二手」提示"];
       return null;
     }
     return null;
