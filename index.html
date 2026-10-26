@@ -128,7 +128,7 @@
   <header class="page-head">
     <span class="eyebrow">維修零件報價查詢</span>
     <h1>手機維修報價查詢</h1>
-    <p>iPhone／三星／OPPO／VIVO／小米／紅米。資料即時讀取自 Google 試算表。</p>
+    <p>iPhone／iPad／三星／OPPO／VIVO／小米／紅米。資料即時讀取自 Google 試算表。</p>
   </header>
 
   <div class="status-bar">
@@ -172,6 +172,7 @@
   const ANDROID_SHEET_ID = "1IDOVG-py6Z02CZUpdnq-H-pvPRJCoHlu8rQkkKwERRE";
   const BRANDS_CONFIG = {
     "iPhone": { kind: "iphone", sheetId: ANDROID_SHEET_ID, gid: "533321848" },
+    "iPad": { kind: "iphone", sheetId: ANDROID_SHEET_ID, gid: "420723776" },
     "三星": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "545222408" },
     "OPPO": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "302173125" },
     "VIVO": { kind: "android", sheetId: ANDROID_SHEET_ID, gid: "1747588530" },
@@ -403,9 +404,13 @@
   // ---------- iPhone sheet: 每種零件各自一欄，欄名即零件名稱，已是最終報價 ----------
   function buildIphoneList(rows) {
     if (!rows.length) return [];
-    const header = rows[0];
+    // 欄名列不一定在第 1 列（例如 iPad 分頁最上面有一列大標題），
+    // 所以找第一格是「型號」的那一列當欄名列；找不到就當第 1 列。
+    let headerIdx = rows.findIndex((r) => (r[0] || "").trim() === "型號");
+    if (headerIdx < 0) headerIdx = 0;
+    const header = rows[headerIdx];
     const list = [];
-    for (let r = 1; r < rows.length; r++) {
+    for (let r = headerIdx + 1; r < rows.length; r++) {
       const row = rows[r];
       const model = (row[0] || "").trim();
       if (!model) continue;
