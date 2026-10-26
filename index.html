@@ -190,7 +190,8 @@
   const NO_WARRANTY_KEYWORDS = ["背玻璃", "後殼", "鏡頭玻璃", "除漏液"];
   // key 用「基本項目名稱」比對（用 startsWith），這樣之後直接在 Google Sheet
   // 欄位名稱後面加註記（例如「螢幕玻璃(需預約...)」）也不會對不上。
-  const WARRANTY_OVERRIDE_DAYS = { "螢幕玻璃": 30 };
+  // 依品牌分開設定：iPhone 的螢幕玻璃保固30天，iPad 的螢幕玻璃用預設90天。
+  const WARRANTY_OVERRIDE_DAYS = { "iPhone": { "螢幕玻璃": 30 } };
   function isCosmeticPart(label) {
     return NO_WARRANTY_KEYWORDS.some((kw) => label.includes(kw));
   }
@@ -203,7 +204,7 @@
   }
   function warrantyLabel(label) {
     if (isCosmeticPart(label)) return { text: "不含保固", cls: "none" };
-    const override = lookupByPrefix(WARRANTY_OVERRIDE_DAYS, label);
+    const override = lookupByPrefix(WARRANTY_OVERRIDE_DAYS[activeBrand] || {}, label);
     const days = override != null ? override : WARRANTY_DAYS;
     return { text: `保固${days}天`, cls: "covered" };
   }
